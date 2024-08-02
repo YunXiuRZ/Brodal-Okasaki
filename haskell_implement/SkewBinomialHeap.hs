@@ -22,6 +22,7 @@ size (Build []) = 0
 size (Build (Node x r c:ts)) = length c + size (Build ts) + 1
 
 -- We assume that r1 = r2
+-- O(1)
 link :: Ord a => STree a -> STree a -> STree a
 link t1@(Node x1 r1 c1) t2@(Node x2 r2 c2)  
     | x1 <= x2   = Node x1 (r1+1) (t2:c1)
@@ -29,6 +30,7 @@ link t1@(Node x1 r1 c1) t2@(Node x2 r2 c2)
 
 -- We assume that r0 = 0, i.e. t0 is a rank 0 skew binomial tree
 --            and r1 = r2
+-- O(1)
 skewLink :: Ord a => STree a -> STree a -> STree a -> STree a
 skewLink t0@(Node x0 r0 _) t1@(Node x1 r1 c1) t2@(Node x2 r2 c2) 
     | x1 <= x0 && x1 <= x2 = Node x1 (r1+1) (t0:t2:c1)
@@ -43,10 +45,14 @@ insertTree t (Build (t':ts))
     | otherwise        = insertTree (link t t') (Build ts)
 
 -- Link them if there are two lowest-rank tree
+-- O(lgn), worst case when 2111111...
 uniqify :: Ord a => Ts a -> Ts a
 uniqify (Build []) = Build []
 uniqify (Build (t:ts)) = insertTree t (Build ts)
 
+-- We assume the input heaps both don't have multiple same rank 
+-- subtrees, for example, have uniqified
+-- O(lgn)
 meldUniq :: Ord a => Ts a -> Ts a -> Ts a
 meldUniq (Build []) ts = ts
 meldUniq ts (Build []) = ts
@@ -63,16 +69,19 @@ instance PriorityQueue Ts where
     isEmpty :: Ts a -> Bool
     isEmpty (Build ts) = null ts
 
+    -- O(1), no recursion
     insert :: Ord a => a -> Ts a -> Ts a
     insert x ts@(Build (t1:t2:tss))
         | rank t1 == rank t2 = Build (skewLink (Node x 0 []) t1 t2 : tss)
         | otherwise          = Build (Node x 0 [] : (t1:t2:tss))
     insert x (Build ts) = Build (Node x 0 [] : ts)
 
+    -- O(lgn), uniqify and meldUniq both O(lgn)
     merge :: Ord a => Ts a -> Ts a -> Ts a
     merge ts ts' = meldUniq (uniqify ts) (uniqify ts')
 
     -- I don't want to deal with side effect in agda so I use "Nothing" rather than exception
+    -- O(lgn)
     findMin :: Ord a => Ts a -> Maybe a
     findMin (Build []) = Nothing
     findMin (Build (t:ts)) = case findMin (Build ts) of
@@ -84,6 +93,7 @@ instance PriorityQueue Ts where
     -- "split" split the subtrees of the given tree into two groups by 
     -- their rank. The former group contains subtrees with rank > 0 
     -- while the latter contains subtrees with rank = 0.
+    -- O(lgn)
     deleteMin :: Ord a => Ts a -> Ts a
     deleteMin (Build []) = empty
     deleteMin ts = foldr insert (merge tss ts') xs'

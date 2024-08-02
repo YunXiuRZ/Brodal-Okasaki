@@ -1,0 +1,4 @@
+name: brodal-okasaki-heap
+depend: standard-library-2.0 calf
+include: src
+flags: --prop --guardedness
