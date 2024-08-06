@@ -1,0 +1,10 @@
+{-# OPTIONS --rewriting #-}
+open import Examples.Sorting.Sequential.Comparable
+open import Calf hiding (A)
+
+module Transformation (M : Comparable) where
+open Comparable M
+
+open import SkewBinomialHeap (M) using (skewBinomialHeap)
+open import PriorityQueue (M)
+
