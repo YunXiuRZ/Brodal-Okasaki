@@ -11,6 +11,7 @@ open import Calf.Data.Bool hiding (_≤_; _<_)
 
 open import Agda.Builtin.Unit
 
+open import PriorityQueue (M)
 
 open Comparable M renaming (_≤?_ to _≤ᴬ?_; _≤_ to _≤ᴬ_)
 open import Examples.Sorting.Sequential.Core M
@@ -138,37 +139,59 @@ postulate
                 → Π (maybe nat) λ mr₂ → Π (sbh true mr₂) λ _
                 → F (Σ⁺ bool (λ b → Σ⁺ (maybe nat) λ mr → sbh b mr)))
 
-  emp : val (sbh true nothing)
 
-  isEmpty : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
-               → F bool)
+queue : tp⁺
+queue = Σ⁺ bool λ b → Σ⁺ (maybe nat) λ mr → sbh b mr
 
+emp : val queue
+emp = (true , (nothing , unique empty))
+
+postulate
+  --emp : val queue
+
+  isEmpty : cmp (Π queue λ _ → F bool)
+
+ -- isEmpty : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
+   --            → F bool)
+
+  insert : cmp (Π A λ _ → Π queue λ _ → F queue)
+
+{-
   insert : cmp (Π A λ _
               → Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
               → F (Σ⁺ bool λ b' → Σ⁺ (maybe nat) λ mr' → sbh b' mr'))
+-}
 
+  merge : cmp (Π queue λ _ → Π queue λ _ → F queue)
+
+{-
   merge : cmp (Π bool λ b₁ → Π (maybe nat) λ mr₁ → Π (sbh b₁ mr₁) λ _
              → Π bool λ b₂ → Π (maybe nat) λ mr₂ → Π (sbh b₂ mr₂) λ _
              → F (Σ⁺ bool λ b → Σ⁺ (maybe nat) λ mr → sbh b mr))
-
-  findMin : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
-               → F A)
-
-  deleteMin : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
-                 → F (maybe A))
-
---uniqify cmp (Π nat λ _ → Π (sbh A r) → Π (sbh
-{-
-   emp : val Q
-   isEmpty : cmp (Π Q λ _ → F bool)
-   insert : cmp (Π A λ _ → Π Q λ _ → F Q)
-   merge : cmp (Π Q λ _ → Π Q λ _ → F Q)
-   findMin : cmp (Π Q λ _ → F (maybe A))
-   deleteMin : cmp (Π Q λ _ → F Q)
 -}
 
+  findMin : cmp (Π queue λ _ → F (maybe A))
 
+{-
+  findMin : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
+               → F (maybe A))
+-}
 
+  deleteMin : cmp(Π queue λ _ → F queue)
+
+{-
+  deleteMin : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh b mr) λ _
+                 → F queue)
+-}
+
+skewBinomialHeap : PriorityQueue
+skewBinomialHeap = record { Q = queue;
+                            emp = emp;
+                            isEmpty = isEmpty;
+                            insert = insert;
+                            merge = merge;
+                            findMin = findMin;
+                            deleteMin = deleteMin}
 
 
 
