@@ -43,6 +43,10 @@ record Preorder : Set₁ where
   case-≤/idem branch (yes x≤y) = refl
   case-≤/idem branch (no ¬x≤y) = refl
 
+getᴬ : Preorder → tp⁺
+getᴬ M = Preorder.A M
+
+-- Example of construction of preorder
 NatPreorder : Preorder
 NatPreorder = record
   { A = nat

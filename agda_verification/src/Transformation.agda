@@ -7,80 +7,83 @@ open import Calf.Data.Maybe
 
 open import Relation.Binary hiding (Preorder)
 
-module Transformation (M : Preorder) (Queue : PriorityQueue M) where
-  open Preorder M
-  module PQM = PQ M
+
+module Transformation where
+  variable
+    M : Preorder
+    Q : PQFunctor
 
   module AddRoot where
     -- Rooted Queue
-    data RQ : Set where
-      empty : RQ
+    data RQ (M : Preorder) (Queue : PQFunctor) : Set where
+      empty : RQ M Queue
 
-      root : val A
-           → val (PriorityQueue.Q Queue)
+      root : val (getᴬ M)
+           → val (PriorityQueue.Q (Queue M))
            --------------------------
-           → RQ
-    rq : tp⁺
-    rq = meta⁺ RQ
+           → RQ M Queue
+    rq : Preorder → PQFunctor → tp⁺
+    rq M Queue = meta⁺ (RQ M Queue)
 
-    emp : val rq
+    emp : val (rq M Q)
     emp = empty
 
     postulate
-      isEmpty : cmp (Π rq λ _ → F bool)
-      insert : cmp (Π A λ _ → Π rq λ _ → F rq)
-      merge : cmp (Π rq λ _ → Π rq λ _ → F rq)
-      findMin : cmp (Π rq λ _ → F (maybe A))
-      deleteMin : cmp (Π rq λ _ → F rq)
+      isEmpty : cmp (Π (rq M Q) λ _ → F bool)
+      insert : cmp (Π (getᴬ M) λ _ → Π (rq M Q) λ _ → F (rq M Q))
+      merge : cmp (Π (rq M Q) λ _ → Π (rq M Q) λ _ → F (rq M Q))
+      findMin : cmp (Π (rq M Q) λ _ → F (maybe (getᴬ M)))
+      deleteMin : cmp (Π (rq M Q) λ _ → F (rq M Q))
 
-    RootedSBH : PQM.PriorityQueue
-    RootedSBH = record { Q = rq;
-                         emp = emp;
-                         isEmpty = isEmpty;
-                         insert = insert;
-                         merge = merge;
-                         findMin = findMin;
-                         deleteMin = deleteMin}
-{-
+    RootedSBH : PQFunctor → PQFunctor
+    RootedSBH Q M = record { Q = rq M Q
+                           ; emp = emp
+                           ; isEmpty = isEmpty
+                           ; insert = insert
+                           ; merge = merge
+                           ; findMin = findMin
+                           ; deleteMin = deleteMin}
+
   module Bootstrapping where
     mutual 
-      data R : Set where
-        empty : val A
+      data R (M : Preorder) (Queue : PQFunctor) : Set where
+        empty : val (getᴬ M)
                -------
-              → R
+              → R M Queue
 
-        {-rec : val A
-            → val (PriorityQueue.Q PQR.PriorityQueue)
+        rec : val (getᴬ M)
+            → val (PriorityQueue.Q (Queue (preorderR M Queue)))
             ---------------------------
-            → R-}
-      r : tp⁺
-      r = meta⁺ R
+            → R M Queue
+      r : Preorder → PQFunctor → tp⁺
+      r M Q = meta⁺ (R M Q)
 
-      _≤ᵣ_ : val r → val r → Set
-      (empty a₁) ≤ᵣ (empty a₂) = a₁ ≤ a₂
-      {-(empty a₁) ≤ᵣ (rec a₂ _) = a₁ ≤ a₂
-      (rec a₁ _) ≤ᵣ (empty a₂) = a₁ ≤ a₂
-      (rec a₁ _) ≤ᵣ (rec a₂ _) = a₁ ≤ a₂-}
-
-      ≤ᵣ-refl : Reflexive _≤ᵣ_
-      ≤ᵣ-refl = {!!} 
-
-      ≤ᵣ-trans : Transitive _≤ᵣ_
-      ≤ᵣ-trans = {!!}
-
-      ≤ᵣ-total : Total _≤ᵣ_
-      ≤ᵣ-total = {!!}
       
-      instance
-        preorderR : Preorder
-        preorderR = record
-          { A = r
-          ; _≤_ = _≤ᵣ_
-          ; ≤-refl = ≤ᵣ-refl
-          ; ≤-trans = ≤ᵣ-trans
-          ; ≤-total = ≤ᵣ-total
-          }
+      _≤ᵣ_ : (M : Preorder) → (Q : PQFunctor) → val (r M Q) → val (r M Q) → Set
+      _≤ᵣ_ M Q (empty a₁) (empty a₂) = {!!}
+      _≤ᵣ_ M Q (empty a₁) (rec a₂ _) = {!!}
+      _≤ᵣ_ M Q(rec a₁ _) (empty a₂) = {!!}
+      _≤ᵣ_ M Q(rec a₁ _) (rec a₂ _) = {!!}
 
-      open module PQR = PQ preorderR
+      ≤ᵣ-refl : (M : Preorder) → (Q : PQFunctor) → Reflexive (_≤ᵣ_ M Q)
+      ≤ᵣ-refl M Q = {!!} 
 
--}
+      ≤ᵣ-trans : (M : Preorder) → (Q : PQFunctor) → Transitive (_≤ᵣ_ M Q)
+      ≤ᵣ-trans M Q = {!!}
+ 
+      ≤ᵣ-total : (M : Preorder) → (Q : PQFunctor) → Total (_≤ᵣ_ M Q)
+      ≤ᵣ-total M Q = {!!}
+      
+
+      preorderR : Preorder → PQFunctor → Preorder
+      preorderR M Q = record
+        { A = r M Q
+        ; _≤_ = _≤ᵣ_ M Q
+        ; ≤-refl = ≤ᵣ-refl M Q
+        ; ≤-trans = ≤ᵣ-trans M Q
+        ; ≤-total = ≤ᵣ-total M Q
+        }
+
+
+
+
