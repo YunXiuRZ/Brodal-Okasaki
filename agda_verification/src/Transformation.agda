@@ -44,6 +44,8 @@ module Transformation where
                            ; findMin = findMin
                            ; deleteMin = deleteMin}
 
+-- I temporarily give up this part
+{-
   module Bootstrapping where
     mutual 
       data R (M : Preorder) (Queue : PQFunctor) : Set where
@@ -85,5 +87,4 @@ module Transformation where
         }
 
 
-
-
+-}
