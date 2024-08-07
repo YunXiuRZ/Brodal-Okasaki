@@ -2,10 +2,12 @@
 open import Preorder as P
 open import PriorityQueue as PQ
 open import Calf hiding (A)
-open import Calf.Data.Bool
+open import Calf.Data.Bool hiding (_≤_)
 open import Calf.Data.Maybe
 
-module Transformation (M : Preorder) (PQ : PriorityQueue M) where
+open import Relation.Binary hiding (Preorder)
+
+module Transformation (M : Preorder) (Queue : PriorityQueue M) where
   open Preorder M
   module PQM = PQ M
 
@@ -15,7 +17,7 @@ module Transformation (M : Preorder) (PQ : PriorityQueue M) where
       empty : RQ
 
       root : val A
-           → val (PriorityQueue.Q PQ)
+           → val (PriorityQueue.Q Queue)
            --------------------------
            → RQ
     rq : tp⁺
@@ -39,4 +41,46 @@ module Transformation (M : Preorder) (PQ : PriorityQueue M) where
                          merge = merge;
                          findMin = findMin;
                          deleteMin = deleteMin}
+{-
+  module Bootstrapping where
+    mutual 
+      data R : Set where
+        empty : val A
+               -------
+              → R
 
+        {-rec : val A
+            → val (PriorityQueue.Q PQR.PriorityQueue)
+            ---------------------------
+            → R-}
+      r : tp⁺
+      r = meta⁺ R
+
+      _≤ᵣ_ : val r → val r → Set
+      (empty a₁) ≤ᵣ (empty a₂) = a₁ ≤ a₂
+      {-(empty a₁) ≤ᵣ (rec a₂ _) = a₁ ≤ a₂
+      (rec a₁ _) ≤ᵣ (empty a₂) = a₁ ≤ a₂
+      (rec a₁ _) ≤ᵣ (rec a₂ _) = a₁ ≤ a₂-}
+
+      ≤ᵣ-refl : Reflexive _≤ᵣ_
+      ≤ᵣ-refl = {!!} 
+
+      ≤ᵣ-trans : Transitive _≤ᵣ_
+      ≤ᵣ-trans = {!!}
+
+      ≤ᵣ-total : Total _≤ᵣ_
+      ≤ᵣ-total = {!!}
+      
+      instance
+        preorderR : Preorder
+        preorderR = record
+          { A = r
+          ; _≤_ = _≤ᵣ_
+          ; ≤-refl = ≤ᵣ-refl
+          ; ≤-trans = ≤ᵣ-trans
+          ; ≤-total = ≤ᵣ-total
+          }
+
+      open module PQR = PQ preorderR
+
+-}
