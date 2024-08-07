@@ -1,0 +1,11 @@
+{-# OPTIONS --prop --rewriting #-}
+
+record Comparable : Set₁ where
+  field
+    A : tp⁺
+    _≤_ : val A → val A → Set
+    ≤-refl : Reflexive _≤_
+    ≤-trans : Transitive _≤_
+    ≤-total : Total _≤_
+    _≤?_ : cmp (Π A λ x → Π A λ y → F (meta⁺ (Dec (x ≤ y))))
+    ≤?-total : (x y : val A) → ◯ (∃ λ p → x ≤? y ≡ ret p)

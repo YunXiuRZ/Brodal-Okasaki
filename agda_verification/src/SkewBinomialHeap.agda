@@ -1,7 +1,7 @@
 {-# OPTIONS --prop --rewriting #-}
-open import Examples.Sorting.Sequential.Comparable
+open import Preorder as P
 
-module SkewBinomialHeap (M : Comparable)  where
+module SkewBinomialHeap (M : Preorder)  where
 
 open import Calf hiding (A)
 open import Calf.Data.Nat 
@@ -13,8 +13,8 @@ open import Agda.Builtin.Unit
 
 open import PriorityQueue (M)
 
-open Comparable M renaming (_≤?_ to _≤ᴬ?_; _≤_ to _≤ᴬ_)
-open import Examples.Sorting.Sequential.Core M
+open Preorder M renaming (_≤_ to _≤ᴬ_)
+--open import Examples.Sorting.Sequential.Core M
 open import Function
 open import Data.Sum
 
@@ -127,13 +127,14 @@ postulate
   deleteMin : cmp(Π queue λ _ → F queue)
   
 skewBinomialHeap : PriorityQueue
-skewBinomialHeap = record { Q = queue;
-                            emp = emp;
-                            isEmpty = isEmpty;
-                            insert = insert;
-                            merge = merge;
-                            findMin = findMin;
-                            deleteMin = deleteMin}
+skewBinomialHeap = record { Q = queue
+                          ; emp = emp
+                          ; isEmpty = isEmpty
+                          ; insert = insert
+                          ; merge = merge
+                          ; findMin = findMin
+                          ; deleteMin = deleteMin
+                          }
 
 
 

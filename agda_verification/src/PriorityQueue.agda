@@ -1,11 +1,11 @@
 {-# OPTIONS --rewriting #-}
 open import Calf.Data.Bool
-open import Examples.Sorting.Sequential.Comparable
+open import Preorder as P
 open import Calf hiding (A)
 open import Calf.Data.Maybe
 
-module PriorityQueue (M : Comparable)  where
-open Comparable M
+module PriorityQueue (M : Preorder)  where
+open Preorder M
 
 record PriorityQueue : Set where
   field

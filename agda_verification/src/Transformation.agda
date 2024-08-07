@@ -1,12 +1,12 @@
 {-# OPTIONS --rewriting #-}
-open import Examples.Sorting.Sequential.Comparable
+open import Preorder as P
 open import PriorityQueue as PQ
 open import Calf hiding (A)
 open import Calf.Data.Bool
 open import Calf.Data.Maybe
 
-module Transformation (M : Comparable) (PQ : PriorityQueue M) where
-  open Comparable M
+module Transformation (M : Preorder) (PQ : PriorityQueue M) where
+  open Preorder M
   module PQM = PQ M
 
   module AddRoot where
