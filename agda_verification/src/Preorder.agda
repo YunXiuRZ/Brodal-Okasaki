@@ -10,6 +10,9 @@ open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; modu
 open import Data.Sum
 open import Function
 
+Π' : (A : Set) → (A → Set) → Set
+Π' A B = (x : A) → B x
+
 record Preorder : Set₁ where
   field
     A : tp⁺
@@ -17,6 +20,7 @@ record Preorder : Set₁ where
     ≤-refl : Reflexive _≤_
     ≤-trans : Transitive _≤_
     ≤-total : Total _≤_
+    _≤?_ : Π' (val A) λ x → Π' (val A) λ y → Dec (x ≤ y)
 
   _≥_ : val A → val A → Set
   x ≥ y = y ≤ x
@@ -54,6 +58,7 @@ NatPreorder = record
   ; ≤-refl = ≤-refl
   ; ≤-trans = ≤-trans
   ; ≤-total = ≤-total
+  ;_≤?_ = λ x y → (x ≤? y)
   }
   where
     open import Calf.Data.Nat

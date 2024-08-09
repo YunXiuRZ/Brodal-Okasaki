@@ -1,13 +1,13 @@
 {-# OPTIONS --prop --rewriting #-}
-open import Preorder as P 
+open import Preorder as P
 
 module SkewBinomialHeap where
 
 open import Calf hiding (A)
-open import Calf.Data.Nat hiding (_≤?_) renaming (_≤_ to _≤ⁿ_; _<_ to _<ⁿ_)
-open import Calf.Data.List hiding (merge; and)
+open import Calf.Data.Nat rename (_≤_ to _≤)
+open import Calf.Data.List hiding (merge)
 open import Calf.Data.Maybe
-open import Calf.Data.Bool hiding (_≤_; _<_; _≤?_)
+open import Calf.Data.Bool hiding (_≤_; _<_)
 
 open import Agda.Builtin.Unit
 
@@ -15,7 +15,6 @@ open import PriorityQueue
 
 open import Function
 open import Data.Sum
-open import Relation.Nullary.Decidable.Core
 
 variable
   M : Preorder
@@ -51,20 +50,20 @@ data SBT (M : Preorder) : val nat → Set where
 sbt : Preorder → val nat → tp⁺
 sbt M r = meta⁺ (SBT M r)
 
-_≤ⁿn_ : val nat → val (maybe nat) → Set
-n ≤ⁿn (just m) = n ≤ⁿ m
-n ≤ⁿn nothing = ⊤
+_≤n_ : val nat → val (maybe nat) → Set
+n ≤n (just m) = n ≤ m
+n ≤n nothing = ⊤
 
-_<ⁿn_ : val nat → val (maybe nat) → Set
-n <ⁿn (just m) = n <ⁿ m
-n <ⁿn nothing = ⊤
+_<n_ : val nat → val (maybe nat) → Set
+n <n (just m) = n < m
+n <n nothing = ⊤
 
 -- Monotonic List of Skew Binomial Trees
 data SBML (M : Preorder) : val (maybe nat) → Set where
   empty : SBML M nothing
 
   cons : ∀ {r mr}
-       → r <ⁿn mr
+       → r <n mr
        → SBT M r
        → SBML M mr
        ----------
@@ -96,53 +95,26 @@ root (skewB x t₁ t₂) = x
 rank : {M : Preorder} → {r : val nat} → val (sbt M r) → val nat
 rank {M} {r} t = r
 
--- Need Fixed, _≤?_ is no more a computation
-postulate
-  link : cmp (Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
-{-link {M} r t₁ t₂ = bind (F _) (x₁ ≤? x₂) $ case-≤
-   (λ x≤y → ret (simple t₁ t₂))
-   (λ x≰y → ret (simple t₂ t₁))
-   where
-   open Preorder M
-   x₁ = root t₁
-   x₂ = root t₂
- -}  
-and : {B : Set} {C : Set} → Dec B → cmp ((Π (meta⁺ (Dec C)) λ _ → F bool))
---and : {B : Set} {C : Set} → cmp (Π (meta⁺ (Dec B)) λ _ → Π (meta⁺ (Dec C)) λ _ → F bool)
-and x y = ret ((Dec.does x) ∧ (Dec.does y))
-
-case-b : {S : Set} {x y : val bool} → S → S → (val bool) → S
-case-b {S} {x} {y} true-branch false-branch true = true-branch 
-case-b {S} {x} {y} true-branch false-branch false = false-branch
-
-
-
--- bind : (X : tp⁻) → cmp (F A) → (val A → cmp X) → cmp X
--- A = meta⁺ (Dec (x ≤ y))
--- and should be (val (meta⁺ (Dec (x ≤ y)))) → cmp X
--- X = (Π (meta⁺ (Dec C)) λ _ → F bool)
--- Then  (bind (F _) (x₁ ≤? x₀) and ) : cmp (Π (meta⁺ (Dec C)) λ _ → F bool)
-
--- A = meta⁺ (Dec (x ≤ y))
--- ... should be (Dec (x ≤ y)) → cmp X
-postulate
-  skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
-{-skewLink {M} t₀ r t₁ t₂ = (bind (F _) (x₁ ≤? x₂) (bind (F _) (x₁ ≤? x₀) and )) $ case-b
-  (λ _ → ?)
-  (λ _ → ?)
-  where
-  open Preorder M
-  x₀ = root t₀
-  x₁ = root t₁
-  x₂ = root t₂
+-- test how to use comparable
+{-
+ctest : cmp (Π A λ _ → Π A λ _ → F A)
+ctest x y = bind (F _) (x ≤? y) $ case-≤
+    (λ x≤y → ret {!!})
+    (λ x≰y → ret {!!})
 -}
 
+link : {M : Preorder} → cmp (Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
+link {M} r t₁ t₂ = bind (F _) ((root t₁) ≤? (root t₂)) $ case-≤
+   (λ x≤y → ret ?)
+   (λ x≰y → ret ?)
+   where open Preorder M
 
 postulate
+  skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
   --we assume that r' ≤ r or r' is nothing 
   insertTree : cmp (Π nat λ r → Π (sbt M r) λ _
                   → Π (maybe nat) λ mr → Π (Σ⁺ bool (λ b → sbh M b mr)) λ _
-                  → Π (meta⁺ (r ≤ⁿn mr)) λ _ 
+                  → Π (meta⁺ (r ≤n mr)) λ _ 
                   → F (Σ⁺ bool (λ b → (Σ⁺ nat (λ i → sbh M b (just i))))))
   uniqify : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh M b mr) λ _
                → F (Σ⁺ nat (λ r → sbh M true (just r))))

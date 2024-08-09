@@ -44,7 +44,7 @@ module Transformation where
                            ; findMin = findMin
                            ; deleteMin = deleteMin}
 
--- I temporarily give up this part
+-- I temporarily give up this part due to the difficulty of defining Bootstrapping, but I have some maybe useful idea. I'll try to implement it if time permits
 {-
   module Bootstrapping where
     mutual 
