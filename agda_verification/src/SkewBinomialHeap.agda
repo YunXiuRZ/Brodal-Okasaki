@@ -11,11 +11,13 @@ open import Calf.Data.Bool hiding (_≤_; _<_; _≤?_)
 
 open import Agda.Builtin.Unit
 
-open import PriorityQueue 
+open import PriorityQueue
+open import Extend
 
 open import Function
 open import Data.Sum
 open import Relation.Nullary.Decidable.Core
+open import Relation.Nullary.Negation using (¬_)
 
 variable
   M : Preorder
@@ -42,8 +44,8 @@ data SBT (M : Preorder) : val nat → Set where
         → SBT M (suc r)
 
   skewB : ∀ {r}
-        → val (getᴬ M)
         → SBT M r
+        → val (getᴬ M)
         → SBT M r
          ---------------
         → SBT M (suc r)
@@ -91,51 +93,31 @@ root : {M : Preorder} → {r : val nat} → val (sbt M r) → val (getᴬ M)
 root (leaf x) = x
 root (simple t₁ t₂) = root t₁
 root (skewA x t₁ t₂) = x
-root (skewB x t₁ t₂) = x
+root (skewB t₁ x t₂) = x
 
 rank : {M : Preorder} → {r : val nat} → val (sbt M r) → val nat
 rank {M} {r} t = r
 
--- Need Fixed, _≤?_ is no more a computation
-postulate
-  link : cmp (Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
-{-link {M} r t₁ t₂ = bind (F _) (x₁ ≤? x₂) $ case-≤
+link : cmp (Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
+link {M} r t₁ t₂ = branch (x₁ ≤? x₂)
    (λ x≤y → ret (simple t₁ t₂))
    (λ x≰y → ret (simple t₂ t₁))
    where
    open Preorder M
    x₁ = root t₁
    x₂ = root t₂
- -}  
-and : {B : Set} {C : Set} → Dec B → cmp ((Π (meta⁺ (Dec C)) λ _ → F bool))
---and : {B : Set} {C : Set} → cmp (Π (meta⁺ (Dec B)) λ _ → Π (meta⁺ (Dec C)) λ _ → F bool)
-and x y = ret ((Dec.does x) ∧ (Dec.does y))
 
-case-b : {S : Set} {x y : val bool} → S → S → (val bool) → S
-case-b {S} {x} {y} true-branch false-branch true = true-branch 
-case-b {S} {x} {y} true-branch false-branch false = false-branch
-
-
-
--- bind : (X : tp⁻) → cmp (F A) → (val A → cmp X) → cmp X
--- A = meta⁺ (Dec (x ≤ y))
--- and should be (val (meta⁺ (Dec (x ≤ y)))) → cmp X
--- X = (Π (meta⁺ (Dec C)) λ _ → F bool)
--- Then  (bind (F _) (x₁ ≤? x₀) and ) : cmp (Π (meta⁺ (Dec C)) λ _ → F bool)
-
--- A = meta⁺ (Dec (x ≤ y))
--- ... should be (Dec (x ≤ y)) → cmp X
-postulate
-  skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
-{-skewLink {M} t₀ r t₁ t₂ = (bind (F _) (x₁ ≤? x₂) (bind (F _) (x₁ ≤? x₀) and )) $ case-b
-  (λ _ → ?)
-  (λ _ → ?)
+skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
+skewLink {M} t₀ r t₁ t₂ = branch (x₁ ≤? x₂ ×-dec x₁ ≤? x₀)
+  (λ _ → ret (skewB t₁ x₀ t₂))
+  (λ _ → branch ((x₂ ≤? x₁) ×-dec (x₂ ≤? x₀))
+         (λ _ → ret (skewB t₂ x₀ t₁))
+         (λ _ → ret (skewA x₀ t₁ t₂) ))
   where
   open Preorder M
   x₀ = root t₀
   x₁ = root t₁
   x₂ = root t₂
--}
 
 
 postulate
