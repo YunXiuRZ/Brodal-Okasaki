@@ -7,17 +7,22 @@ open import Calf hiding (A)
 open import Calf.Data.Nat hiding (_≤?_) renaming (_≤_ to _≤ⁿ_; _<_ to _<ⁿ_)
 open import Calf.Data.List hiding (merge; and)
 open import Calf.Data.Maybe
-open import Calf.Data.Bool hiding (_≤_; _<_; _≤?_)
+open import Calf.Data.Bool hiding (_≤_; _<_; _≤?_; _≟_)
 
 open import Agda.Builtin.Unit
+open import Agda.Builtin.Equality
 
 open import PriorityQueue
 open import Extend
 
 open import Function
 open import Data.Sum
+open import Data.Product using (Σ; _×_)
 open import Relation.Nullary.Decidable.Core
 open import Relation.Nullary.Negation using (¬_)
+open import Relation.Binary.PropositionalEquality as Eq using (subst)
+open import Relation.Binary.Definitions using (Tri; Trichotomous)
+open import Data.Nat.Properties using (≤∧≢⇒<; <-cmp)
 
 variable
   M : Preorder
@@ -53,22 +58,14 @@ data SBT (M : Preorder) : val nat → Set where
 sbt : Preorder → val nat → tp⁺
 sbt M r = meta⁺ (SBT M r)
 
-_≤ⁿn_ : val nat → val (maybe nat) → Set
-n ≤ⁿn (just m) = n ≤ⁿ m
-n ≤ⁿn nothing = ⊤
-
-_<ⁿn_ : val nat → val (maybe nat) → Set
-n <ⁿn (just m) = n <ⁿ m
-n <ⁿn nothing = ⊤
-
 -- Monotonic List of Skew Binomial Trees
 data SBML (M : Preorder) : val (maybe nat) → Set where
   empty : SBML M nothing
 
   cons : ∀ {r mr}
-       → r <ⁿn mr
        → SBT M r
        → SBML M mr
+       → r <ⁿn mr
        ----------
        → SBML M (just r)
 
@@ -84,7 +81,7 @@ data SBH (M : Preorder) : val bool → val (maybe nat) → Set where
        → SBML M (just r)
        ----------------
        → SBH M false (just r)
-       
+
 sbh : Preorder → val bool → val (maybe nat) → tp⁺
 sbh M b mr = meta⁺ (SBH M b mr)
 
@@ -97,6 +94,17 @@ root (skewB t₁ x t₂) = x
 
 rank : {M : Preorder} → {r : val nat} → val (sbt M r) → val nat
 rank {M} {r} t = r
+
+splitˢᵇʰ : {b : val bool} {r : val nat} → val (sbh M b (just r)) → (val (sbt M r)) × (Σ (val (maybe nat)) λ mr → val (sbh M true mr))
+splitˢᵇʰ (unique (cons {r} {mr} t sbml r<ⁿnmr)) = t , (mr , unique sbml)
+splitˢᵇʰ (skew {r} t sbml) = t , (just r , unique sbml)
+
+headˢᵇʰ : {b : val bool} {r : val nat} → val (sbh M b (just r)) → val (sbt M r)
+headˢᵇʰ sbh = proj₁ (splitˢᵇʰ sbh)
+
+tailˢᵇʰ : {b : val bool} {r : val nat} → val (sbh M b (just r)) → (Σ (val (maybe nat)) λ mr → val (sbh M true mr))
+tailˢᵇʰ sbh = proj₂ (splitˢᵇʰ sbh)
+
 
 link : cmp (Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
 link {M} r t₁ t₂ = branch (x₁ ≤? x₂)
@@ -119,19 +127,34 @@ skewLink {M} t₀ r t₁ t₂ = branch (x₁ ≤? x₂ ×-dec x₁ ≤? x₀)
   x₁ = root t₁
   x₂ = root t₂
 
-
-postulate
-  --we assume that r' ≤ r or r' is nothing 
-  insertTree : cmp (Π nat λ r → Π (sbt M r) λ _
-                  → Π (maybe nat) λ mr → Π (Σ⁺ bool (λ b → sbh M b mr)) λ _
+--we assume that r' ≤ r or r' is nothing and the skew binomial heap is uniqified
+insertTree : cmp (Π nat λ r → Π (sbt M r) λ _
+                  → Π (maybe nat) λ mr → Π (sbh M true mr) λ _
                   → Π (meta⁺ (r ≤ⁿn mr)) λ _ 
-                  → F (Σ⁺ bool (λ b → (Σ⁺ nat (λ i → sbh M b (just i))))))
-  uniqify : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh M b mr) λ _
-               → F (Σ⁺ nat (λ r → sbh M true (just r))))
-  meldUniq : cmp (Π (maybe nat) λ mr₁ → Π (sbh M true mr₁) λ _
-                → Π (maybe nat) λ mr₂ → Π (sbh M true mr₂) λ _
-                → F (Σ⁺ bool (λ b → Σ⁺ (maybe nat) λ mr → sbh M b mr)))
+                  → F ((Σ⁺ (maybe nat) (λ mr' → sbh M true mr'))))
 
+insertTree r t nothing ts n≤ⁿmr = ret (just r , unique (cons t empty nothing))
+insertTree {M} r t (just n) (unique sbml) (just r≤n) with r ≟ n
+...                                      | no r≢n = ret (just r , unique (cons t sbml (just (≤∧≢⇒< r≤n r≢n))))
+...                                      | yes r≡n with sbml
+...                                                   | cons {r'} {mr} t' ts' n<ⁿnmr = bind (F _) (link n (subst (SBT M) r≡n t) t') (λ sbt → insertTree (suc n) sbt mr (unique ts') (<ⁿn→s≤ⁿn n<ⁿnmr)) 
+
+uniqify : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh M b mr) λ _
+               → F (Σ⁺ (maybe nat) (λ mr' → sbh M true mr')))
+uniqify .true nothing (unique ts) = ret (nothing , unique ts)
+uniqify .true (just r) (unique ts) = ret (just r , unique ts)
+uniqify .false (just r) (skew t ts) = insertTree r t (just r) (unique ts) n≤ⁿnn 
+
+
+meldUniq : cmp (Π (maybe nat) λ mr₁ → Π (sbh M true mr₁) λ _
+              → Π (maybe nat) λ mr₂ → Π (sbh M true mr₂) λ _
+              → F (Σ⁺ (maybe nat) λ mr → sbh M true mr))
+meldUniq nothing sbh₁ mr₂ sbh₂ = ret (mr₂ , sbh₂)
+meldUniq (just r₁) sbh₁ nothing sbh₂ = ret (just r₁ , sbh₁)
+meldUniq (just r₁) sbh₁ (just r₂) sbh₂ with (<-cmp r₁ r₂)
+...                                       | tri≈ _ _ _ = {!!}
+...                                       | tri< _ _ _ = {!!}
+...                                       | tri> _ _ _ = {!!} 
 
 queue : Preorder → tp⁺
 queue M = Σ⁺ bool λ b → Σ⁺ (maybe nat) λ mr → sbh M b mr
