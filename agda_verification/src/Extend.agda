@@ -4,9 +4,9 @@ module Extend where
 open import Calf.Prelude
 open import Calf.CBPV
 open import Relation.Nullary
-open import Calf.Data.Nat hiding (_≤?_) renaming (_≤_ to _≤ⁿ_; _<_ to _<ⁿ_)
+open import Calf.Data.Nat hiding (_≤?_) 
 open import Calf.Data.Maybe
-open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat.Properties using (≤-refl; <-≤-trans; <⇒≤; n≤1+n; ≤-trans)
 
 
 postulate
@@ -17,29 +17,65 @@ branch : {S E : Set} → (Dec E) → (E → S) → (¬ E → S) → S
 branch {S} (yes proof) true-branch false-branch = true-branch proof
 branch {S} (no proof) true-branch false-branch = false-branch proof
 
-data _≤ⁿn_ : val nat → val (maybe nat) → Set where
+data _≤ⁿ_ : val nat → val (maybe nat) → Set where
   just : ∀ {n m}
-       → n ≤ⁿ m
+       → n ≤ m
         ----------------
-       → n ≤ⁿn (just m)
+       → n ≤ⁿ (just m)
 
   nothing : ∀ {n}
            ---------------
-          → n ≤ⁿn nothing
+          → n ≤ⁿ nothing
 
-data _<ⁿn_ : val nat → val (maybe nat) → Set where
+data _<ⁿ_ : val nat → val (maybe nat) → Set where
   just : ∀ {n m}
-       → n <ⁿ m
+       → n < m
         ----------------
-       → n <ⁿn (just m)
+       → n <ⁿ (just m)
 
   nothing : ∀ {n}
            ----------------
-          → n <ⁿn nothing
+          → n <ⁿ nothing
 
-<ⁿn→s≤ⁿn : ∀ {n m} → n <ⁿn m → (suc n) ≤ⁿn m
-<ⁿn→s≤ⁿn (just x) = just x
-<ⁿn→s≤ⁿn nothing = nothing
+<ⁿ→s≤ⁿ : ∀ {n m} → n <ⁿ m → (suc n) ≤ⁿ m
+<ⁿ→s≤ⁿ (just x) = just x
+<ⁿ→s≤ⁿ nothing = nothing
 
-n≤ⁿnn : ∀ {n} → n ≤ⁿn just n
-n≤ⁿnn = just ≤-refl
+
+s≤ⁿ→≤ⁿ : ∀ {n mr} → suc n ≤ⁿ mr → n ≤ⁿ mr
+s≤ⁿ→≤ⁿ {n} {mr = just r} (just sn≤r) = just (≤-trans (n≤1+n n) sn≤r)
+s≤ⁿ→≤ⁿ {mr = nothing} sn≤ⁿmr = nothing
+
+n≤ⁿn : ∀ {n} → n ≤ⁿ just n
+n≤ⁿn = just ≤-refl
+
+data _≤ᵐ_ : val (maybe nat) → val (maybe nat) → Set where
+  just : ∀ {n m}
+       → n ≤ⁿ m
+        ----------------
+       → (just n) ≤ᵐ m
+
+  nothing : 
+           -------------
+          nothing ≤ᵐ nothing
+
+≤ᵐ-refl : ∀ {n} → n ≤ᵐ n
+≤ᵐ-refl {just x} = just n≤ⁿn
+≤ᵐ-refl {nothing} = nothing
+
+
+<-≤ᵐ→<ⁿ : ∀ {n m mr} → n < m → (just m) ≤ᵐ mr → n <ⁿ mr
+<-≤ᵐ→<ⁿ {mr = just r} n<m (just (just m≤r)) = just (<-≤-trans n<m m≤r)
+<-≤ᵐ→<ⁿ {mr = nothing} n<m (just m≤ⁿmr) = nothing
+
+
+<ⁿ-≤ᵐ→<ⁿ : ∀ {n mr mr'} → n <ⁿ mr → mr ≤ᵐ mr' → n <ⁿ mr'
+<ⁿ-≤ᵐ→<ⁿ {mr = just r} {mr' = just r'} (just n<r) (just (just r≤r')) = just (<-≤-trans n<r r≤r')
+<ⁿ-≤ᵐ→<ⁿ {mr' = nothing} n<ⁿmr mr≤ᵐmr' = nothing
+
+<ⁿ-≤ᵐ→≤ᵐ : ∀ {n mr mr'} → n <ⁿ mr → mr ≤ᵐ mr' → just n ≤ᵐ mr'
+<ⁿ-≤ᵐ→≤ᵐ {mr' = just r'} (just n<m) (just (just m≤r')) = just (just (<⇒≤ (<-≤-trans n<m m≤r')))
+<ⁿ-≤ᵐ→≤ᵐ {mr' = nothing} n<ⁿmr mr≤ᵐmr' = just nothing
+
+
+
