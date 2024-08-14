@@ -9,6 +9,12 @@ open import Calf.Data.List hiding (merge; and)
 open import Calf.Data.Maybe
 open import Calf.Data.Bool hiding (_≤_; _<_; _≤?_; _≟_)
 
+open import Algebra.Cost.Instances using (ℕ-CostMonoid)
+costMonoid = ℕ-CostMonoid
+open import Calf.Step costMonoid
+open import Calf.Data.BigO costMonoid
+open import Calf.Data.IsBounded costMonoid
+
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
 
@@ -118,17 +124,45 @@ link {M} r t₁ t₂ = branch (x₁ ≤? x₂)
    x₁ = root t₁
    x₂ = root t₂
 
+-- link has no cost
+link/is-bounded : ∀ {M} r t₁ t₂
+                → IsBounded (sbt M (suc r)) (link {M} r t₁ t₂) zero
+link/is-bounded {M} r t₁ t₂ = branch (x₁ ≤? x₂)
+  (λ x≤y → subst (λ x → (IsBounded (sbt M (suc r)) x zero)) (sym (branch-yes {exp = x₁ ≤? x₂} {proof = x≤y})) (bound/ret {sbt M (suc r)} (simple t₁ t₂)))
+  (λ x≰y → subst (λ x → (IsBounded (sbt M (suc r)) x zero)) (sym (branch-no {exp = x₁ ≤? x₂} {proof = x≰y})) (bound/ret {sbt M (suc r)} (simple t₂ t₁)))
+  where
+  open Preorder M 
+  x₁ = root t₁
+  x₂ = root t₂
+
 skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (sbt M r) λ _ → F (sbt M (suc r)))
 skewLink {M} t₀ r t₁ t₂ = branch (x₁ ≤? x₂ ×-dec x₁ ≤? x₀)
-  (λ _ → ret (skewB t₁ x₀ t₂))
-  (λ _ → branch ((x₂ ≤? x₁) ×-dec (x₂ ≤? x₀))
-         (λ _ → ret (skewB t₂ x₀ t₁))
-         (λ _ → ret (skewA x₀ t₁ t₂) ))
+  (λ x₁-min → ret (skewB t₁ x₀ t₂))
+  (λ x₁-not-min → branch ((x₂ ≤? x₁) ×-dec (x₂ ≤? x₀))
+         (λ x₂-min → ret (skewB t₂ x₀ t₁))
+         (λ x₀-min → ret (skewA x₀ t₁ t₂) ))
   where
   open Preorder M
   x₀ = root t₀
   x₁ = root t₁
   x₂ = root t₂
+  
+-- skewLink has no cost
+skewLink/is-bounded : ∀ {M} t₀ r t₁ t₂
+                    → IsBounded (sbt M (suc r)) (skewLink {M} t₀ r t₁ t₂) zero
+skewLink/is-bounded {M} t₀ r t₁ t₂ = branch x₁-min?
+  (λ x₁-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-yes {exp = x₁-min?} {proof = x₁-min})) (bound/ret {sbt M (suc r)} (skewB t₁ x₀ t₂)))
+  (λ x₁-not-min → branch x₂-min?
+    (λ x₂-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min})) (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-yes {exp = x₂-min?} {proof = x₂-min})) (bound/ret {sbt M (suc r)} (skewB t₂ x₀ t₁))))
+    (λ x₀-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min})) (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-no {exp = x₂-min?} {proof = x₀-min})) (bound/ret {sbt M (suc r)} (skewA x₀ t₁ t₂))))
+  )
+  where
+  open Preorder M
+  x₀ = root t₀
+  x₁ = root t₁
+  x₂ = root t₂
+  x₁-min? = x₁ ≤? x₂ ×-dec x₁ ≤? x₀
+  x₂-min? = x₂ ≤? x₁ ×-dec x₂ ≤? x₀
 
 insertTree' : cmp (Π nat λ r → Π (sbt M r) λ _
                   → Π (maybe nat) λ mr → Π (sbh M true mr) λ _

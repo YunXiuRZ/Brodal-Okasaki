@@ -7,15 +7,19 @@ open import Relation.Nullary
 open import Calf.Data.Nat hiding (_≤?_) 
 open import Calf.Data.Maybe
 open import Data.Nat.Properties using (≤-refl; <-≤-trans; <⇒≤; n≤1+n; ≤-trans)
-
-
-postulate
-  bind2 : (X : tp⁻) → cmp (F A) → cmp (F B) → (val A → val B → cmp X) → cmp X
+open import Relation.Binary.PropositionalEquality
 
 
 branch : {S E : Set} → (Dec E) → (E → S) → (¬ E → S) → S
 branch {S} (yes proof) true-branch false-branch = true-branch proof
 branch {S} (no proof) true-branch false-branch = false-branch proof
+
+postulate
+  branch-yes : {S E : Set} {exp : Dec E} {tb : E → S} {fb : ¬ E → S} {proof : E}
+             → branch exp tb fb ≡ tb proof
+  branch-no : {S E : Set} {exp : Dec E} {tb : E → S} {fb : ¬ E → S} {proof : ¬ E}
+            → branch exp tb fb ≡ fb proof
+
 
 data _≤ⁿ_ : val nat → val (maybe nat) → Set where
   just : ∀ {n m}
