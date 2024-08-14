@@ -26,13 +26,14 @@ open import PriorityQueue
 open import Extend
 
 open import Function
+open import Data.Nat using (_+_)
 open import Data.Sum
 open import Data.Product using (Σ; _×_)
 open import Relation.Nullary.Decidable.Core
 open import Relation.Nullary.Negation using (¬_)
 open import Relation.Binary.PropositionalEquality as Eq using (subst; sym)
 open import Relation.Binary.Definitions using (Tri; Trichotomous; tri<; tri≈; tri>)
-open import Data.Nat.Properties using (≤∧≢⇒<; <-cmp)
+open import Data.Nat.Properties using (≤∧≢⇒<; <-cmp; +-identityʳ)
 
 variable
   M : Preorder
@@ -152,8 +153,8 @@ skewLink : cmp (Π (sbt M 0) λ _ → Π nat λ r → Π (sbt M r) λ _ → Π (
 skewLink {M} t₀ r t₁ t₂ = branch (x₁ ≤? x₂ ×-dec x₁ ≤? x₀)
   (λ x₁-min → ret (skewB t₁ x₀ t₂))
   (λ x₁-not-min → branch ((x₂ ≤? x₁) ×-dec (x₂ ≤? x₀))
-         (λ x₂-min → ret (skewB t₂ x₀ t₁))
-         (λ x₀-min → ret (skewA x₀ t₁ t₂) ))
+    (λ x₂-min → ret (skewB t₂ x₀ t₁))
+    (λ x₀-min → ret (skewA x₀ t₁ t₂)))
   where
   open Preorder M
   x₀ = root t₀
@@ -164,10 +165,15 @@ skewLink {M} t₀ r t₁ t₂ = branch (x₁ ≤? x₂ ×-dec x₁ ≤? x₀)
 skewLink/is-bounded : ∀ {M} t₀ r t₁ t₂
                     → IsBounded (sbt M (suc r)) (skewLink {M} t₀ r t₁ t₂) zero
 skewLink/is-bounded {M} t₀ r t₁ t₂ = branch x₁-min?
-  (λ x₁-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-yes {exp = x₁-min?} {proof = x₁-min})) (bound/ret {sbt M (suc r)} (skewB t₁ x₀ t₂)))
+  (λ x₁-min → (subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-yes {exp = x₁-min?} {proof = x₁-min}))) $
+              bound/ret {sbt M (suc r)} (skewB t₁ x₀ t₂))
   (λ x₁-not-min → branch x₂-min?
-    (λ x₂-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min})) (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-yes {exp = x₂-min?} {proof = x₂-min})) (bound/ret {sbt M (suc r)} (skewB t₂ x₀ t₁))))
-    (λ x₀-min → subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min})) (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-no {exp = x₂-min?} {proof = x₀-min})) (bound/ret {sbt M (suc r)} (skewA x₀ t₁ t₂))))
+    (λ x₂-min → (subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min}))) $
+                (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-yes {exp = x₂-min?} {proof = x₂-min})) $
+                bound/ret {sbt M (suc r)} (skewB t₂ x₀ t₁)))
+    (λ x₀-min → (subst (λ x → IsBounded (sbt M (suc r)) x zero) (sym (branch-no {exp = x₁-min?} {proof = x₁-not-min}))) $
+                (subst (λ y → IsBounded (sbt M (suc r)) y zero) (sym (branch-no {exp = x₂-min?} {proof = x₀-min})) $
+                bound/ret {sbt M (suc r)} (skewA x₀ t₁ t₂)))
   )
   where
   open Preorder M
@@ -192,13 +198,38 @@ insertTree' {M} r t (just n) (unique sbml) (just r≤n) with r ≟ n
   bind (F _) (insertTree' (suc n) sbt mr (unique ts) (<ⁿ→s≤ⁿ n<ⁿmr)) λ (mr' , ts' , sn≤ⁿmr') → 
   ret (mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr'))
 
+-- The cost of insertTree' is bounded by the length of the target heap 
 insertTree'/is-bounded : ∀ {M} r t mr sbh₁ r≤ⁿmr 
                       → IsBounded ((Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr')))) (insertTree' {M} r t mr sbh₁ r≤ⁿmr) (len-sbh sbh₁)
-insertTree'/is-bounded {M} r t nothing (unique empty) r≤ⁿmr = bound/ret {Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} (just r , unique (cons t empty nothing) , n≤ⁿn)
+insertTree'/is-bounded {M} r t nothing (unique empty) r≤ⁿmr = 
+  bound/ret {Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} (just r , unique (cons t empty nothing) , n≤ⁿn)
 insertTree'/is-bounded {M} r t (just n) (unique ts) (just r≤n) with r ≟ n
-...                                      | no r≢n = bound/relax {A = Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} {c' = len-sbml ts} z≤n {ret (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn)} (bound/ret {Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn))
-...                                      | yes r≡n with ts
-...                                                   | cons {r'} {mr} t' tss n<ⁿmr = {!   !}
+...   | no r≢n = 
+  (bound/relax {A = Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} {c' = len-sbml ts} z≤n {ret (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn)}) 
+  (bound/ret {Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn))
+...   | yes r≡n with ts
+...     | cons {r'} {mr} t' tss n<ⁿmr =
+  (subst (λ x → IsBounded A (bind (F _)
+    (link n (subst (SBT M) r≡n t) t') λ sbt → 
+     step (F _) 1 $
+     bind (F _) (insertTree' (suc n) sbt mr (unique tss) (<ⁿ→s≤ⁿ n<ⁿmr)) λ (mr' , ts' , sn≤ⁿmr') → 
+     ret (mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr'))) (1 + x)) 
+     (+-identityʳ (len-sbml tss)) )
+  (bound/bind/const
+    {e = link {M} n (subst (SBT M) r≡n t) t'}
+    {f = λ sbt → 
+         step (F _) 1 $
+         bind (F _) (insertTree' (suc n) sbt mr (unique tss) (<ⁿ→s≤ⁿ n<ⁿmr)) λ (mr' , ts' , sn≤ⁿmr') → 
+         ret {A = A} (mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr'))} zero ( 1 + (len-sbml tss + 0) ) (link/is-bounded {M} n (subst (SBT M) r≡n t) t') λ sbt → 
+  bound/step 1 (bind (F A) (insertTree' (suc n) sbt mr (unique tss) (<ⁿ→s≤ⁿ n<ⁿmr)) λ (mr' , ts' , sn≤ⁿmr') → 
+                ret (mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr'))) 
+  (bound/bind/const
+    {e = insertTree' (suc n) sbt mr (unique tss) (<ⁿ→s≤ⁿ n<ⁿmr)}
+    {f = λ (mr' , ts' , sn≤ⁿmr') → ret {A = A} (mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr'))}
+  (len-sbml tss) 0 (insertTree'/is-bounded (suc n) sbt mr (unique tss) (<ⁿ→s≤ⁿ n<ⁿmr)) (λ (mr' , ts' , sn≤ⁿmr') → 
+  bound/ret {A = A} ( mr' , ts' , subst (λ a → a ≤ⁿ mr') (sym r≡n) (s≤ⁿ→≤ⁿ sn≤ⁿmr')  ))))
+  where 
+  A = Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))
 
 --we assume that r' ≤ r or r' is nothing and the skew binomial heap is uniqified
 insertTree : cmp (Π nat λ r → Π (sbt M r) λ _
@@ -208,6 +239,22 @@ insertTree : cmp (Π nat λ r → Π (sbt M r) λ _
 insertTree r t mr sbh r≤ⁿmr = 
   bind (F _) (insertTree' r t mr sbh r≤ⁿmr) λ (mr' , sbh' , _) → 
   ret (mr' , sbh')
+
+insertTree/is-bounded : ∀ {M} r t mr sbh₁ r≤ⁿmr 
+                      → IsBounded (Σ⁺ (maybe nat) (λ mr' → sbh M true mr')) (insertTree r t mr sbh₁ r≤ⁿmr ) (len-sbh sbh₁)
+insertTree/is-bounded {M} r t mr sbh₁ r≤ⁿmr = 
+  (subst 
+    (λ x → (IsBounded A (insertTree r t mr sbh₁ r≤ⁿmr) x)) 
+    (+-identityʳ (len-sbh sbh₁)) 
+    (bound/bind/const 
+      {e = insertTree' r t mr sbh₁ r≤ⁿmr} 
+      {f = λ (mr' , sbh' , _) → ret {A = A} (mr' , sbh')} 
+      (len-sbh sbh₁) 
+      0 
+      (insertTree'/is-bounded r t mr sbh₁ r≤ⁿmr) 
+      (λ (mr' , sbh' , _) → 
+    bound/ret {A = A} ((mr' , sbh')))))
+  where A = Σ⁺ (maybe nat) (λ mr' → sbh M true mr')
 
 uniqify : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh M b mr) λ _
                → F (Σ⁺ (maybe nat) (λ mr' → sbh M true mr')))
