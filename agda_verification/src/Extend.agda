@@ -6,7 +6,7 @@ open import Calf.CBPV
 open import Relation.Nullary
 open import Calf.Data.Nat hiding (_≤?_) 
 open import Calf.Data.Maybe
-open import Data.Nat.Properties using (≤-refl; <-≤-trans; <⇒≤; n≤1+n; ≤-trans)
+open import Data.Nat.Properties using (≤-refl; <-≤-trans; <⇒≤; n≤1+n; ≤-trans; ≤∧≢⇒<)
 open import Relation.Binary.PropositionalEquality
 
 
@@ -52,6 +52,14 @@ s≤ⁿ→≤ⁿ {mr = nothing} sn≤ⁿmr = nothing
 
 n≤ⁿn : ∀ {n} → n ≤ⁿ just n
 n≤ⁿn = just ≤-refl
+
+just-func : {x y : ℕ} → just x ≢ just y → x ≢ y
+just-func ¬jeq x≡y = ¬jeq (cong just x≡y)
+
+-- r<ⁿmr → sr≢mr → sr<ⁿmr
+<ⁿ∧s≢→s<ⁿ : ∀ {r mr} → r <ⁿ mr → just (suc r) ≢ mr → suc r <ⁿ mr
+<ⁿ∧s≢→s<ⁿ {mr = just x} (just r<x) sr≢mr = just (≤∧≢⇒< r<x (just-func sr≢mr))
+<ⁿ∧s≢→s<ⁿ {mr = nothing} r<ⁿmr sr≢mr = nothing
 
 data _≤ᵐ_ : val (maybe nat) → val (maybe nat) → Set where
   just : ∀ {n m}

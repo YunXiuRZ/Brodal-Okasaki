@@ -26,14 +26,16 @@ open import PriorityQueue
 open import Extend
 
 open import Function
+open import Data.Maybe.Properties using (≡-dec)
 open import Data.Nat using (_+_)
+open import Data.Nat.Properties using (≤∧≢⇒<; <-cmp; +-identityʳ; _≟_)
 open import Data.Sum
 open import Data.Product using (Σ; _×_)
 open import Relation.Nullary.Decidable.Core
 open import Relation.Nullary.Negation using (¬_)
 open import Relation.Binary.PropositionalEquality as Eq using (subst; sym)
 open import Relation.Binary.Definitions using (Tri; Trichotomous; tri<; tri≈; tri>)
-open import Data.Nat.Properties using (≤∧≢⇒<; <-cmp; +-identityʳ)
+
 
 variable
   M : Preorder
@@ -251,10 +253,10 @@ insertTree/is-bounded {M} r t mr sbh₁ r≤ⁿmr =
       {f = λ (mr' , sbh' , _) → ret {A = A} (mr' , sbh')} 
       (len-sbh sbh₁) 
       0 
-      (insertTree'/is-bounded r t mr sbh₁ r≤ⁿmr) 
-      (λ (mr' , sbh' , _) → 
+      (insertTree'/is-bounded r t mr sbh₁ r≤ⁿmr) (λ (mr' , sbh' , _) → 
     bound/ret {A = A} ((mr' , sbh')))))
   where A = Σ⁺ (maybe nat) (λ mr' → sbh M true mr')
+
 
 uniqify : cmp (Π bool λ b → Π (maybe nat) λ mr → Π (sbh M b mr) λ _
                → F (Σ⁺ (maybe nat) (λ mr' → sbh M true mr')))
@@ -305,9 +307,60 @@ queue M = Σ⁺ bool λ b → Σ⁺ (maybe nat) λ mr → sbh M b mr
 emp : val (queue M)
 emp = (true , (nothing , unique empty))
 
+
+insert : cmp (Π (getᴬ M) λ _ → Π (queue M) λ _ → F (queue M))
+insert x (.true , just zero , unique ts@(cons t tss z<ⁿmr)) = ret (false , just zero , skew (leaf x) ts)
+insert x (.true , just (suc r) , unique ts) = ret (true , just zero , unique (cons (leaf x) ts (just z<s)))
+insert {M} x (.false , just r , skew t₁ (cons {mr = mr} t₂ ts r<ⁿmr)) with (≡-dec _≟_) (just (suc r)) mr
+...   | yes sr≡mr = 
+        bind (F _) (skewLink (leaf x) r t₁ t₂) λ t' → 
+        ret (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))
+...   | no sr≢mr = 
+        bind (F _) (skewLink (leaf x) r t₁ t₂) λ t' → 
+        ret (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr)))
+insert x (.true , nothing , unique empty) = ret (true , just zero , unique (cons (leaf x) empty nothing))
+
+insert/is-bounded : ∀ {M} x b mr sbh₁
+                 → IsBounded (queue M) (insert {M} x (b , mr , sbh₁)) zero
+insert/is-bounded {M} x true (just zero) (unique ts@(cons t tss z<ⁿmr)) = 
+  (bound/ret {A = queue M} (false , just zero , skew (leaf x) ts))
+insert/is-bounded {M} x true (just (suc r)) (unique ts) = 
+  (bound/ret {A = queue M} (true , just zero , unique (cons (leaf x) ts (just z<s))))
+insert/is-bounded {M} x false (just r) (skew t₁ (cons {mr = mr} t₂ ts r<ⁿmr)) with (≡-dec _≟_) (just (suc r)) mr
+...   | yes sr≡mr = 
+        bound/bind/const 
+          {A = sbt M (suc r)}
+          {B = queue M}
+          {e = skewLink {M} {!  !} ? ? ? }
+          {f = λ t' → ret (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))}
+          zero 
+          zero 
+          (skewLink/is-bounded {M} (leaf x) r t₁ t₂) λ t' →
+        bound/ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))
+...   | no sr≢mr = {!   !}
+insert/is-bounded {M} x true nothing (unique empty) = bound/ret {A = queue M} (true , just zero , unique (cons (leaf x) empty nothing))
+{-
+bound/bind/const 
+          {e = skewLink {M} (leaf x) r t₁ t₂}
+          {f = λ t' → ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))}
+          zero 
+          zero 
+          (skewLink/is-bounded {M} (leaf x) r t₁ t₂) (λ t' → 
+        bound/ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts)))
+        -}
+
+{-
+bound/bind/const
+          {e = skewLink (leaf x) r t₁ t₂}
+          {f = λ t' → ret (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr)))}
+          zero
+          zero
+          (skewLink/is-bounded {M} (leaf x) r t₁ t₂) (λ t' →
+        bound/ret {A = queue M} (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr))))
+-}
+
 postulate
   isEmpty : cmp (Π (queue M) λ _ → F bool)
-  insert : cmp (Π (getᴬ M) λ _ → Π (queue M) λ _ → F (queue M))
   merge : cmp (Π (queue M) λ _ → Π (queue M) λ _ → F (queue M))
   findMin : cmp (Π (queue M) λ _ → F (maybe (getᴬ M)))
   deleteMin : cmp(Π (queue M) λ _ → F (queue M))
@@ -324,3 +377,4 @@ skewBinomialHeap M = record { Q = queue M
                             }
 
 
+ 
