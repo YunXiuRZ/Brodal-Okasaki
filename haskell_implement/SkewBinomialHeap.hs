@@ -44,7 +44,7 @@ insertTree t (Build (t':ts))
     | rank t < rank t' = Build (t:t':ts)
     | otherwise        = insertTree (link t t') (Build ts)
 
--- Link them if there are two lowest-rank tree
+-- Recursively link them if there are two lowest-rank tree
 -- O(lgn), worst case when 2111111...
 uniqify :: Ord a => Ts a -> Ts a
 uniqify (Build []) = Build []
