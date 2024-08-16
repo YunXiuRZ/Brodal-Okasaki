@@ -210,7 +210,7 @@ insertTree'/is-bounded {M} r t (just n) (unique ts) (just r≤n) with r ≟ n
   (bound/relax {A = Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} {c' = len-sbml ts} z≤n {ret (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn)}) 
   (bound/ret {Σ⁺ (maybe nat) λ mr' → Σ⁺ (sbh M true mr') λ _ → (meta⁺ (r ≤ⁿ mr'))} (just r , unique (cons t ts (just (≤∧≢⇒< r≤n r≢n))) , n≤ⁿn))
 ...   | yes r≡n with ts
-...     | cons {r'} {mr} t' tss n<ⁿmr =
+...     | cons {r'} {mr} t' tss n<ⁿmr = 
   (subst (λ x → IsBounded A (bind (F _)
     (link n (subst (SBT M) r≡n t) t') λ sbt → 
      step (F _) 1 $
@@ -309,17 +309,18 @@ emp = (true , (nothing , unique empty))
 
 
 insert : cmp (Π (getᴬ M) λ _ → Π (queue M) λ _ → F (queue M))
-insert x (.true , just zero , unique ts@(cons t tss z<ⁿmr)) = ret (false , just zero , skew (leaf x) ts)
-insert x (.true , just (suc r) , unique ts) = ret (true , just zero , unique (cons (leaf x) ts (just z<s)))
-insert {M} x (.false , just r , skew t₁ (cons {mr = mr} t₂ ts r<ⁿmr)) with (≡-dec _≟_) (just (suc r)) mr
+insert x (true , just zero , unique ts@(cons t tss z<ⁿmr)) = ret (false , just zero , skew (leaf x) ts)
+insert x (true , just (suc r) , unique ts) = ret (true , just zero , unique (cons (leaf x) ts (just z<s)))
+insert {M} x (false , just r , skew t₁ (cons {mr = mr} t₂ ts r<ⁿmr)) with (≡-dec _≟_) (just (suc r)) mr
 ...   | yes sr≡mr = 
-        bind (F _) (skewLink (leaf x) r t₁ t₂) λ t' → 
+        bind (F (queue M)) (skewLink (leaf x) r t₁ t₂) λ t' → 
         ret (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))
 ...   | no sr≢mr = 
-        bind (F _) (skewLink (leaf x) r t₁ t₂) λ t' → 
+        bind (F (queue M)) (skewLink (leaf x) r t₁ t₂) λ t' → 
         ret (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr)))
-insert x (.true , nothing , unique empty) = ret (true , just zero , unique (cons (leaf x) empty nothing))
+insert x (true , nothing , unique empty) = ret (true , just zero , unique (cons (leaf x) empty nothing))
 
+-- The insert operation of Skew Binomial Heap take constant time!!!!!
 insert/is-bounded : ∀ {M} x b mr sbh₁
                  → IsBounded (queue M) (insert {M} x (b , mr , sbh₁)) zero
 insert/is-bounded {M} x true (just zero) (unique ts@(cons t tss z<ⁿmr)) = 
@@ -328,36 +329,26 @@ insert/is-bounded {M} x true (just (suc r)) (unique ts) =
   (bound/ret {A = queue M} (true , just zero , unique (cons (leaf x) ts (just z<s))))
 insert/is-bounded {M} x false (just r) (skew t₁ (cons {mr = mr} t₂ ts r<ⁿmr)) with (≡-dec _≟_) (just (suc r)) mr
 ...   | yes sr≡mr = 
-        bound/bind/const 
+        (bound/bind/const
           {A = sbt M (suc r)}
           {B = queue M}
-          {e = skewLink {M} {!  !} ? ? ? }
+          {e = skewLink (leaf x) r t₁ t₂}
           {f = λ t' → ret (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))}
           zero 
           zero 
           (skewLink/is-bounded {M} (leaf x) r t₁ t₂) λ t' →
-        bound/ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))
-...   | no sr≢mr = {!   !}
-insert/is-bounded {M} x true nothing (unique empty) = bound/ret {A = queue M} (true , just zero , unique (cons (leaf x) empty nothing))
-{-
-bound/bind/const 
-          {e = skewLink {M} (leaf x) r t₁ t₂}
-          {f = λ t' → ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts))}
-          zero 
-          zero 
-          (skewLink/is-bounded {M} (leaf x) r t₁ t₂) (λ t' → 
         bound/ret {A = queue M} (false , just (suc r) , skew t' (subst (SBML M) (sym sr≡mr) ts)))
-        -}
-
-{-
-bound/bind/const
+...   | no sr≢mr = 
+        bound/bind/const
+          {A = sbt M (suc r)}
+          {B = queue M}
           {e = skewLink (leaf x) r t₁ t₂}
           {f = λ t' → ret (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr)))}
           zero
           zero
           (skewLink/is-bounded {M} (leaf x) r t₁ t₂) (λ t' →
         bound/ret {A = queue M} (true , just (suc r) , unique (cons t' ts (<ⁿ∧s≢→s<ⁿ r<ⁿmr sr≢mr))))
--}
+insert/is-bounded {M} x true nothing (unique empty) = bound/ret {A = queue M} (true , just zero , unique (cons (leaf x) empty nothing))
 
 postulate
   isEmpty : cmp (Π (queue M) λ _ → F bool)
@@ -377,4 +368,3 @@ skewBinomialHeap M = record { Q = queue M
                             }
 
 
- 
