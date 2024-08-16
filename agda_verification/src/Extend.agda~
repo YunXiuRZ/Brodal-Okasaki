@@ -1,9 +1,0 @@
-{-# OPTIONS --rewriting #-}
-module Extend where
-
-open import Calf.Prelude
-open import Calf.CBPV
-
-postulate
-  bind2 : (X : tp⁻) → cmp (F A) → cmp (F A) → (val A → val A → cmp X) → cmp X
-
